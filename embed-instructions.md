@@ -102,7 +102,7 @@ const response = await fetch("https://your-domain.com/ask", {
 
 ### CORS Setup
 Make sure your backend at 127.0.0.1:8000 allows CORS:
-```python
+\`\`\`python
 # If using FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
