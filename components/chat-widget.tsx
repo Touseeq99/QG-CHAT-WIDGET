@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { X, Send, Loader2 } from "lucide-react"
 import Image from "next/image"
+import { AbortSignal } from "abort-controller"
 
 interface Message {
   id: string
@@ -57,6 +58,7 @@ export default function ChatWidget() {
     }
 
     setMessages((prev) => [...prev, userMessage])
+    const currentInput = inputValue
     setInputValue("")
     setIsLoading(true)
 
@@ -70,16 +72,44 @@ export default function ChatWidget() {
     setMessages((prev) => [...prev, loadingMessage])
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/ask", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ question: inputValue }),
-      })
+      // Try multiple API endpoints
+      const apiEndpoints = [
+        "http://127.0.0.1:8000/ask",
+        "http://localhost:8000/ask",
+        "https://your-api-domain.com/ask", // Replace with your actual API domain
+      ]
 
-      if (!response.ok) {
-        throw new Error("Failed to get response")
+      let response = null
+      let lastError = null
+
+      for (const endpoint of apiEndpoints) {
+        try {
+          console.log(`Trying API endpoint: ${endpoint}`)
+
+          response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ question: currentInput }),
+            // Add timeout
+            signal: AbortSignal.timeout(10000), // 10 second timeout
+          })
+
+          if (response.ok) {
+            break // Success, exit the loop
+          } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+        } catch (error) {
+          lastError = error
+          console.warn(`Failed to connect to ${endpoint}:`, error)
+          continue // Try next endpoint
+        }
+      }
+
+      if (!response || !response.ok) {
+        throw lastError || new Error("All API endpoints failed")
       }
 
       const data = await response.json()
@@ -91,7 +121,7 @@ export default function ChatWidget() {
           ...filtered,
           {
             id: Date.now().toString(),
-            text: data.answer || "I apologize, but I couldn't process your request at the moment.",
+            text: data.answer || data.response || "I received your message but couldn't generate a proper response.",
             sender: "bot",
             timestamp: new Date(),
           },
@@ -99,14 +129,23 @@ export default function ChatWidget() {
       })
     } catch (error) {
       console.error("Chat API Error:", error)
-      // Remove loading message and add error response
+
+      // Remove loading message and add error response with helpful message
       setMessages((prev) => {
         const filtered = prev.filter((msg) => msg.id !== "loading")
         return [
           ...filtered,
           {
             id: Date.now().toString(),
-            text: "I'm sorry, I'm having trouble connecting to my knowledge base. Please try again later.",
+            text: `I'm currently unable to connect to the knowledge base. This might be because:
+
+• The backend server at 127.0.0.1:8000 is not running
+• There's a CORS (Cross-Origin) policy blocking the request
+• Network connectivity issues
+
+For now, I'm working in demo mode. Your message "${currentInput}" was received, but I can't provide AI-powered responses until the backend is properly configured.
+
+Please check that your backend server is running and accessible.`,
             sender: "bot",
             timestamp: new Date(),
           },
@@ -193,7 +232,7 @@ export default function ChatWidget() {
                         </div>
                       )}
                       <div
-                        className={`px-5 py-4 lg:px-6 lg:py-5 rounded-2xl text-base lg:text-lg ${
+                        className={`px-5 py-4 lg:px-6 lg:py-5 rounded-2xl text-base lg:text-lg whitespace-pre-line ${
                           message.sender === "user"
                             ? "bg-gray-700 text-gray-100"
                             : "bg-gray-800 text-gray-200 border border-gray-700"
