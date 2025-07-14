@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { X, Send, Loader2, Clock, Wifi, WifiOff } from "lucide-react"
+import { X, Send, Loader2, Clock, Wifi, WifiOff, FileText, Timer } from "lucide-react"
 import Image from "next/image"
 
 interface Message {
@@ -14,6 +14,53 @@ interface Message {
   sender: "user" | "bot"
   timestamp: Date
   responseTime?: number // in milliseconds
+  sources?: string[]
+  processingTime?: string
+}
+
+// Add this markdown parsing function after the imports
+const parseMarkdown = (text: string): string => {
+  if (!text) return text
+
+  return (
+    text
+      // Headers
+      .replace(/^#### (.*$)/gm, '<h3 class="text-lg font-semibold text-gray-100 mt-4 mb-2">$1</h3>')
+      .replace(/^### (.*$)/gm, '<h2 class="text-xl font-semibold text-gray-100 mt-4 mb-2">$1</h2>')
+      .replace(/^## (.*$)/gm, '<h1 class="text-2xl font-bold text-gray-100 mt-4 mb-2">$1</h1>')
+      
+
+      // Bold text
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-100">$1</strong>')
+
+      // Italic text
+      .replace(/\*(.*?)\*/g, '<em class="italic text-gray-200">$1</em>')
+
+      // Code blocks (triple backticks)
+      .replace(
+        /```([\s\S]*?)```/g,
+        '<pre class="bg-gray-700 p-3 rounded-lg mt-2 mb-2 overflow-x-auto"><code class="text-green-400 text-sm">$1</code></pre>',
+      )
+
+      // Inline code
+      .replace(/`([^`]+)`/g, '<code class="bg-gray-700 px-2 py-1 rounded text-green-400 text-sm">$1</code>')
+
+      // Lists (unordered)
+      .replace(/^- (.*$)/gm, '<li class="ml-4 mb-1 text-gray-200">• $1</li>')
+
+      // Lists (ordered)
+      .replace(/^\d+\. (.*$)/gm, '<li class="ml-4 mb-1 text-gray-200 list-decimal">$1</li>')
+
+      // Line breaks
+      .replace(/\n\n/g, "<br><br>")
+      .replace(/\n/g, "<br>")
+
+      // Links
+      .replace(
+        /\[([^\]]+)\]$$([^)]+)$$/g,
+        '<a href="$2" class="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer">$1</a>',
+      )
+  )
 }
 
 export default function ChatWidget() {
@@ -137,7 +184,7 @@ export default function ChatWidget() {
           usedEndpoint = askEndpoint
 
           const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
+          const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout for processing
 
           response = await fetch(askEndpoint, {
             method: "POST",
@@ -192,6 +239,8 @@ export default function ChatWidget() {
             sender: "bot",
             timestamp: new Date(),
             responseTime: responseTime,
+            sources: data.sources || [],
+            processingTime: data.processing_time || null,
           },
         ]
       })
@@ -287,6 +336,32 @@ Please try again once the backend service is available.`,
       default:
         return <Clock className="h-4 w-4" />
     }
+  }
+
+  const renderSources = (sources: string[]) => {
+    if (!sources || sources.length === 0) return null
+
+    // Remove duplicates and filter out empty sources
+    const uniqueSources = [...new Set(sources.filter((source) => source && source.trim()))]
+
+    if (uniqueSources.length === 0) return null
+
+    return (
+      <div className="mt-3 p-3 bg-gray-700 rounded-lg border-l-4 border-blue-500">
+        <div className="flex items-center space-x-2 mb-2">
+          <FileText className="h-4 w-4 text-blue-400" />
+          <span className="text-sm font-medium text-blue-400">Sources Referenced:</span>
+        </div>
+        <div className="space-y-1">
+          {uniqueSources.map((source, index) => (
+            <div key={index} className="text-xs text-gray-300 flex items-center space-x-2">
+              <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
+              <span>{source}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -409,15 +484,36 @@ Please try again once the backend service is available.`,
                               <Loader2 className="h-5 w-5 lg:h-6 lg:w-6 animate-spin text-yellow-500" />
                               <span>{message.text}</span>
                             </div>
+                          ) : message.sender === "bot" ? (
+                            <div
+                              className="prose prose-invert max-w-none"
+                              dangerouslySetInnerHTML={{
+                                __html: parseMarkdown(message.text),
+                              }}
+                            />
                           ) : (
                             message.text
                           )}
                         </div>
-                        {/* Response time indicator */}
-                        {message.responseTime && message.sender === "bot" && (
-                          <div className="text-xs text-gray-500 mt-1 flex items-center space-x-1">
-                            <Clock className="h-3 w-3" />
-                            <span>Response time: {formatResponseTime(message.responseTime)}</span>
+
+                        {/* Sources section */}
+                        {message.sender === "bot" && message.sources && renderSources(message.sources)}
+
+                        {/* Response time and processing time indicators */}
+                        {message.sender === "bot" && (message.responseTime || message.processingTime) && (
+                          <div className="text-xs text-gray-500 mt-2 flex items-center space-x-4">
+                            {message.responseTime && (
+                              <div className="flex items-center space-x-1">
+                                <Clock className="h-3 w-3" />
+                                <span>Network: {formatResponseTime(message.responseTime)}</span>
+                              </div>
+                            )}
+                            {message.processingTime && (
+                              <div className="flex items-center space-x-1">
+                                <Timer className="h-3 w-3" />
+                                <span>Processing: {message.processingTime}</span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
