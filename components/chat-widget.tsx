@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea" // Import Textarea
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { X, Send, Loader2, Clock, Wifi, WifiOff, FileText, Timer } from "lucide-react"
 import Image from "next/image"
@@ -30,20 +30,18 @@ const parseMarkdown = (text: string): string => {
     return placeholder
   })
 
-  // Process headers (adjusting margins for "less spaces")
+  // Process headers (adjusting margins for "less spaces" and smaller text)
   processedText = processedText
-    .replace(/^#### (.*$)/gm, '<h3 class="text-lg font-semibold text-gray-100 mt-2 mb-1">$1</h3>')
-    .replace(/^### (.*$)/gm, '<h2 class="text-xl font-semibold text-gray-100 mt-3 mb-1">$1</h2>')
-    .replace(/^## (.*$)/gm, '<h1 class="text-2xl font-bold text-gray-100 mt-4 mb-2">$1</h1>')
+    .replace(/^#### (.*$)/gm, '<h3 class="text-base font-semibold text-neutral-200 mt-2 mb-1">$1</h3>')
+    .replace(/^### (.*$)/gm, '<h2 class="text-lg font-semibold text-neutral-200 mt-3 mb-1">$1</h2>')
+    .replace(/^## (.*$)/gm, '<h1 class="text-xl font-bold text-neutral-200 mt-4 mb-2">$1</h1>')
 
-  // Process lists (adjusting margins for "less spaces")
+  // Process lists (adjusting margins for "less spaces" and smaller text)
   processedText = processedText
-    .replace(/^- (.*$)/gm, '<li class="ml-4 mb-0.5 text-gray-200">$1</li>')
-    .replace(/^\d+\. (.*$)/gm, '<li class="ml-4 mb-0.5 text-gray-200 list-decimal">$1</li>')
+    .replace(/^- (.*$)/gm, '<li class="ml-4 mb-0.5 text-neutral-300">$1</li>')
+    .replace(/^\d+\. (.*$)/gm, '<li class="ml-4 mb-0.5 text-neutral-300 list-decimal">$1</li>')
 
   // Process tables
-  // This regex looks for a header row, a separator row, and then subsequent data rows.
-  // It's a simplified regex and might not catch all edge cases of markdown tables.
   processedText = processedText.replace(
     /^\|(.+)\|\n\|(---[:| -]*)+\|\n((?:\|.*\|\n?)*)/gm,
     (match, headerLine, separatorLine, bodyLines) => {
@@ -61,21 +59,21 @@ const parseMarkdown = (text: string): string => {
             .filter(Boolean),
         )
 
-      let tableHtml = '<div class="overflow-x-auto my-4"><table class="w-full border-collapse text-gray-200">'
+      let tableHtml = '<div class="overflow-x-auto my-4"><table class="w-full border-collapse text-neutral-300">'
 
       // Table Header
-      tableHtml += '<thead><tr class="bg-gray-700">'
+      tableHtml += '<thead><tr class="bg-neutral-800">'
       headers.forEach((header: string) => {
-        tableHtml += `<th class="border border-gray-600 px-4 py-2 text-left font-semibold">${header}</th>`
+        tableHtml += `<th class="border border-neutral-700 px-4 py-2 text-left font-semibold">${header}</th>`
       })
       tableHtml += "</tr></thead>"
 
       // Table Body
       tableHtml += "<tbody>"
       rows.forEach((row: string[]) => {
-        tableHtml += '<tr class="even:bg-gray-800 odd:bg-gray-900">'
+        tableHtml += '<tr class="even:bg-neutral-900 odd:bg-neutral-950">'
         row.forEach((cell: string) => {
-          tableHtml += `<td class="border border-gray-700 px-4 py-2">${cell}</td>`
+          tableHtml += `<td class="border border-neutral-800 px-4 py-2">${cell}</td>`
         })
         tableHtml += "</tr>"
       })
@@ -85,26 +83,20 @@ const parseMarkdown = (text: string): string => {
   )
 
   // Handle paragraphs and remaining line breaks
-  // Split by two or more newlines to identify distinct paragraphs.
-  // Filter out empty strings that might result from splitting.
   const paragraphs = processedText.split(/\n{2,}/).filter((p) => p.trim().length > 0)
 
-  // For each paragraph, replace single newlines with a space (soft break)
-  // Then wrap in <p> tags with a reduced bottom margin.
   processedText = paragraphs
     .map((paragraph) => {
-      // Replace single newlines within a paragraph with a space
       const cleanedParagraph = paragraph.replace(/\n/g, " ").trim()
-      // Only wrap if there's actual content
-      return cleanedParagraph ? `<p class="mb-2">${cleanedParagraph}</p>` : ""
+      return cleanedParagraph ? `<p class="mb-2 text-neutral-300">${cleanedParagraph}</p>` : ""
     })
     .join("")
 
-  // Process inline elements
+  // Process inline elements (smaller text for code)
   processedText = processedText
-    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-100">$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em class="italic text-gray-200">$1</em>')
-    .replace(/`([^`]+)`/g, '<code class="bg-gray-700 px-2 py-1 rounded text-green-400 text-sm">$1</code>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-neutral-200">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em class="italic text-neutral-300">$1</em>')
+    .replace(/`([^`]+)`/g, '<code class="bg-neutral-700 px-2 py-1 rounded text-green-400 text-xs">$1</code>')
     .replace(
       /\[([^\]]+)\]\$\$([^)]+)\$\$/g,
       '<a href="$2" class="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer">$1</a>',
@@ -112,12 +104,11 @@ const parseMarkdown = (text: string): string => {
 
   // Restore code blocks
   codeBlockMap.forEach((originalCodeBlock, placeholder) => {
-    // Restore the original code block content, including its backticks
     processedText = processedText.replace(
       placeholder,
       originalCodeBlock.replace(
         /```([\s\S]*?)```/,
-        `<pre class="bg-gray-700 p-3 rounded-lg mt-2 mb-2 overflow-x-auto"><code class="text-green-400 text-sm">$1</code></pre>`,
+        `<pre class="bg-neutral-700 p-3 rounded-lg mt-2 mb-2 overflow-x-auto"><code class="text-green-400 text-xs">$1</code></pre>`,
       ),
     )
   })
@@ -371,7 +362,7 @@ Please try again once the backend service is available.`,
       case "checking":
         return "text-yellow-400"
       default:
-        return "text-gray-400"
+        return "text-neutral-400"
     }
   }
 
@@ -410,14 +401,14 @@ Please try again once the backend service is available.`,
     if (uniqueSources.length === 0) return null
 
     return (
-      <div className="mt-3 p-3 bg-gray-700 rounded-lg border-l-4 border-blue-500">
+      <div className="mt-3 p-3 bg-neutral-800 rounded-lg border-l-4 border-blue-500">
         <div className="flex items-center space-x-2 mb-2">
           <FileText className="h-4 w-4 text-blue-400" />
-          <span className="text-sm font-medium text-blue-400">Sources Referenced:</span>
+          <span className="text-xs font-medium text-blue-400">Sources Referenced:</span>
         </div>
         <div className="space-y-1">
           {uniqueSources.map((source, index) => (
-            <div key={index} className="text-xs text-gray-300 flex items-center space-x-2">
+            <div key={index} className="text-xs text-neutral-300 flex items-center space-x-2">
               <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
               <span>{source}</span>
             </div>
@@ -433,7 +424,7 @@ Please try again once the backend service is available.`,
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className="h-16 w-16 lg:h-20 lg:w-20 rounded-full bg-black hover:bg-gray-800 shadow-2xl transition-all duration-300 hover:scale-105 p-2 relative"
+          className="h-16 w-16 lg:h-20 lg:w-20 rounded-full bg-neutral-900 hover:bg-neutral-800 shadow-2xl transition-all duration-300 hover:scale-105 p-2 relative"
           size="icon"
         >
           <div className="w-full h-full relative">
@@ -454,16 +445,16 @@ Please try again once the backend service is available.`,
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="bg-gray-900 rounded-2xl shadow-2xl border border-gray-700 w-96 sm:w-[450px] lg:w-[550px] xl:w-[650px] h-[500px] sm:h-[650px] lg:h-[750px] xl:h-[850px] flex flex-col animate-in slide-in-from-bottom-2 duration-300">
+        <div className="bg-neutral-950 rounded-2xl shadow-2xl border border-neutral-800 w-80 sm:w-[400px] lg:w-[500px] xl:w-[600px] h-[450px] sm:h-[600px] lg:h-[700px] xl:h-[800px] flex flex-col animate-in slide-in-from-bottom-2 duration-300">
           {/* Header */}
-          <div className="bg-black text-gray-100 p-6 rounded-t-2xl flex items-center justify-between border-b border-gray-700">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 lg:w-12 lg:h-12 relative">
+          <div className="bg-neutral-900 text-neutral-100 p-3 rounded-t-2xl flex items-center justify-between border-b border-neutral-800">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 lg:w-9 lg:h-9 relative">
                 <Image src="/qadri-logo.png" alt="Qadri Group" fill className="object-contain rounded-full" />
               </div>
               <div>
-                <h3 className="font-bold text-lg lg:text-xl">Qadri Group</h3>
-                <p className="text-sm lg:text-base text-gray-400">HR Assistant</p>
+                <h3 className="font-bold text-sm lg:text-base">Qadri Group</h3>
+                <p className="text-xs text-neutral-400">HR Assistant</p>
                 <div className={`text-xs ${getConnectionStatusColor()} flex items-center space-x-1`}>
                   {getConnectionIcon()}
                   <span>Status: {getConnectionStatusText()}</span>
@@ -475,7 +466,7 @@ Please try again once the backend service is available.`,
                 onClick={checkBackendConnection}
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-gray-400 hover:text-gray-100 hover:bg-gray-800 rounded-full"
+                className="h-7 w-7 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 rounded-full"
                 title="Refresh connection"
                 disabled={connectionStatus === "checking"}
               >
@@ -489,65 +480,65 @@ Please try again once the backend service is available.`,
                 onClick={() => setIsOpen(false)}
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 lg:h-12 lg:w-12 text-gray-400 hover:text-gray-100 hover:bg-gray-800 rounded-full"
+                className="h-8 w-8 lg:h-9 lg:w-9 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 rounded-full"
               >
-                <X className="h-5 w-5 lg:h-6 lg:w-6" />
+                <X className="h-4 w-4 lg:h-5 lg:w-5" />
               </Button>
             </div>
           </div>
 
           {/* Messages */}
-          <ScrollArea className="flex-1 p-6 bg-gray-900">
+          <ScrollArea className="flex-1 p-4 bg-neutral-900">
             {showWelcome && messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
-                <p className="text-yellow-400 text-sm lg:text-base mb-4 px-4 py-2 bg-gray-800 rounded-lg border border-yellow-500/50">
+                <p className="text-xs lg:text-sm mb-3 px-3 py-1.5 bg-neutral-800 rounded-lg border border-yellow-500/50 text-yellow-400">
                   Please ask questions in detail to get relevant answers.
                 </p>
-                <div className="w-20 h-20 lg:w-24 lg:h-24 bg-black rounded-full flex items-center justify-center mb-6 p-3">
+                <div className="w-16 h-16 lg:w-20 lg:h-20 bg-neutral-900 rounded-full flex items-center justify-center mb-4 p-2">
                   <div className="w-full h-full relative">
                     <Image src="/qadri-logo.png" alt="Qadri Group" fill className="object-contain" />
                   </div>
                 </div>
-                <h3 className="text-xl lg:text-2xl font-bold text-gray-100 mb-3">Start a conversation</h3>
-                <p className="text-gray-400 text-base lg:text-lg max-w-md mb-4">
+                <h3 className="text-lg lg:text-xl font-bold text-neutral-100 mb-2">Start a conversation</h3>
+                <p className="text-sm lg:text-base text-neutral-400 max-w-xs mb-3">
                   Ask me anything about HR policies, procedures, or general inquiries.
                 </p>
-                <div className={`text-sm ${getConnectionStatusColor()} flex items-center space-x-2`}>
+                <div className={`text-xs ${getConnectionStatusColor()} flex items-center space-x-2`}>
                   {getConnectionIcon()}
                   <span>Status: {getConnectionStatusText()}</span>
                 </div>
                 {connectionStatus === "disconnected" && (
-                  <p className="text-xs text-gray-500 mt-2 max-w-sm">
+                  <p className="text-xs text-neutral-500 mt-2 max-w-xs">
                     Backend service is not available. Please ensure your server is running at http://127.0.0.1:8000
                   </p>
                 )}
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {messages.map((message) => (
                   <div
                     key={message.id}
                     className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`flex items-start space-x-3 max-w-[85%] ${message.sender === "user" ? "flex-row-reverse space-x-reverse" : ""}`}
+                      className={`flex items-start space-x-2 max-w-[85%] ${message.sender === "user" ? "flex-row-reverse space-x-reverse" : ""}`}
                     >
                       {message.sender === "bot" && (
-                        <div className="w-8 h-8 lg:w-10 lg:h-10 relative flex-shrink-0 mt-1">
+                        <div className="w-7 h-7 lg:w-8 lg:h-8 relative flex-shrink-0 mt-0.5">
                           <Image src="/qadri-logo.png" alt="Qadri Group" fill className="object-contain rounded-full" />
                         </div>
                       )}
                       <div className="flex flex-col">
                         <div
-                          className={`px-5 py-4 lg:px-6 lg:py-5 rounded-2xl text-base lg:text-lg whitespace-pre-line ${
+                          className={`px-4 py-3 lg:px-5 lg:py-4 rounded-xl text-sm lg:text-base whitespace-pre-line ${
                             message.sender === "user"
-                              ? "bg-gray-700 text-gray-100"
-                              : "bg-gray-800 text-gray-200 border border-gray-700"
+                              ? "bg-neutral-700 text-neutral-200" // User message background
+                              : "bg-neutral-800 text-neutral-100 border border-neutral-700" // Bot message background with border
                           }`}
                         >
                           {message.id === "loading" ? (
-                            <div className="flex items-center space-x-3">
-                              <Loader2 className="h-5 w-5 lg:h-6 lg:w-6 animate-spin text-yellow-500" />
+                            <div className="flex items-center space-x-2">
+                              <Loader2 className="h-4 w-4 lg:h-5 lg:w-5 animate-spin text-yellow-500" />
                               <span>{message.text}</span>
                             </div>
                           ) : message.sender === "bot" ? (
@@ -567,15 +558,15 @@ Please try again once the backend service is available.`,
 
                         {/* Response time and processing time indicators */}
                         {message.sender === "bot" && (message.responseTime || message.processingTime) && (
-                          <div className="text-xs text-gray-500 mt-2 flex items-center space-x-4">
+                          <div className="text-xs text-neutral-500 mt-1.5 flex items-center space-x-3">
                             {message.responseTime && (
-                              <div className="flex items-center space-x-1">
+                              <div className="flex items-center space-x-0.5">
                                 <Clock className="h-3 w-3" />
                                 <span>Network: {formatResponseTime(message.responseTime)}</span>
                               </div>
                             )}
                             {message.processingTime && (
-                              <div className="flex items-center space-x-1">
+                              <div className="flex items-center space-x-0.5">
                                 <Timer className="h-3 w-3" />
                                 <span>Processing: {message.processingTime}</span>
                               </div>
@@ -592,23 +583,23 @@ Please try again once the backend service is available.`,
           </ScrollArea>
 
           {/* Input */}
-          <div className="p-6 border-t border-gray-700 bg-gray-900">
-            <div className="flex space-x-4">
-              <Input
+          <div className="p-4 border-t border-neutral-800 bg-neutral-900">
+            <div className="flex space-x-3 items-end">
+              <Textarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type your message..."
                 disabled={isLoading}
-                className="flex-1 text-base lg:text-lg py-4 lg:py-5 px-6 lg:px-7 rounded-full border-2 border-gray-600 bg-gray-800 text-gray-100 placeholder-gray-400 focus:border-yellow-500 focus:ring-0 focus:bg-gray-700"
+                className="flex-1 text-sm lg:text-base py-2.5 px-4 rounded-xl border-2 border-neutral-700 bg-neutral-800 text-neutral-100 placeholder-neutral-400 focus:border-yellow-500 focus:ring-0 h-24" // Fixed height, no resize, no overflow-y-auto
               />
               <Button
                 onClick={sendMessage}
                 disabled={!inputValue.trim() || isLoading}
                 size="icon"
-                className="bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 hover:scale-105 h-14 w-14 lg:h-16 lg:w-16 rounded-full transition-all duration-200"
+                className="bg-neutral-700 hover:bg-neutral-600 text-neutral-100 hover:scale-105 h-16 w-16 lg:h-18 lg:w-18 rounded-full transition-all duration-200 flex-shrink-0" // Gray button
               >
-                <Send className="h-6 w-6 lg:h-7 lg:w-7 text-black" />
+                <Send className="h-6 w-6 lg:h-7 lg:w-7 text-neutral-100" />
               </Button>
             </div>
           </div>
