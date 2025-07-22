@@ -246,7 +246,8 @@ export default function ChatWidget() {
           usedEndpoint = askEndpoint
 
           const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout for processing
+          // Set timeout to 60 seconds (60000 milliseconds)
+          const timeoutId = setTimeout(() => controller.abort(), 60000)
 
           response = await fetch(askEndpoint, {
             method: "POST",
@@ -328,7 +329,7 @@ I'm unable to connect to the backend service to process your message: "${current
 
 **Error Details:**
 - Response time: ${responseTime}ms
-- Error: ${error instanceof Error ? error.message : "Unknown error"}
+- Error: ${error instanceof Error && error.name === "AbortError" ? "Request timed out after 60 seconds." : error instanceof Error ? error.message : "Unknown error"}
 - Endpoints tried: http://127.0.0.1:8000/ask, http://localhost:8000/ask
 
 **Please ensure:**
