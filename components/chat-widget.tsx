@@ -18,49 +18,111 @@ interface Message {
   processingTime?: string
 }
 
-// Add this markdown parsing function after the imports
 const parseMarkdown = (text: string): string => {
   if (!text) return text
 
-  return (
-    text
-      // Headers
-      .replace(/^#### (.*$)/gm, '<h3 class="text-lg font-semibold text-gray-100 mt-4 mb-2">$1</h3>')
-      .replace(/^### (.*$)/gm, '<h2 class="text-xl font-semibold text-gray-100 mt-4 mb-2">$1</h2>')
-      .replace(/^## (.*$)/gm, '<h1 class="text-2xl font-bold text-gray-100 mt-4 mb-2">$1</h1>')
-      
+  // Store code blocks to prevent their internal newlines from being processed
+  const codeBlockMap = new Map<string, string>()
+  let codeBlockCounter = 0
+  let processedText = text.replace(/```([\s\S]*?)```/g, (match) => {
+    const placeholder = `__CODE_BLOCK_${codeBlockCounter++}__`
+    codeBlockMap.set(placeholder, match)
+    return placeholder
+  })
 
-      // Bold text
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-100">$1</strong>')
+  // Process headers (adjusting margins for "less spaces")
+  processedText = processedText
+    .replace(/^#### (.*$)/gm, '<h3 class="text-lg font-semibold text-gray-100 mt-2 mb-1">$1</h3>')
+    .replace(/^### (.*$)/gm, '<h2 class="text-xl font-semibold text-gray-100 mt-3 mb-1">$1</h2>')
+    .replace(/^## (.*$)/gm, '<h1 class="text-2xl font-bold text-gray-100 mt-4 mb-2">$1</h1>')
 
-      // Italic text
-      .replace(/\*(.*?)\*/g, '<em class="italic text-gray-200">$1</em>')
+  // Process lists (adjusting margins for "less spaces")
+  processedText = processedText
+    .replace(/^- (.*$)/gm, '<li class="ml-4 mb-0.5 text-gray-200">$1</li>')
+    .replace(/^\d+\. (.*$)/gm, '<li class="ml-4 mb-0.5 text-gray-200 list-decimal">$1</li>')
 
-      // Code blocks (triple backticks)
-      .replace(
-        /```([\s\S]*?)```/g,
-        '<pre class="bg-gray-700 p-3 rounded-lg mt-2 mb-2 overflow-x-auto"><code class="text-green-400 text-sm">$1</code></pre>',
-      )
+  // Process tables
+  // This regex looks for a header row, a separator row, and then subsequent data rows.
+  // It's a simplified regex and might not catch all edge cases of markdown tables.
+  processedText = processedText.replace(
+    /^\|(.+)\|\n\|(---[:| -]*)+\|\n((?:\|.*\|\n?)*)/gm,
+    (match, headerLine, separatorLine, bodyLines) => {
+      const headers = headerLine
+        .split("|")
+        .map((h: string) => h.trim())
+        .filter(Boolean)
+      const rows = bodyLines
+        .split("\n")
+        .filter(Boolean)
+        .map((row: string) =>
+          row
+            .split("|")
+            .map((cell: string) => cell.trim())
+            .filter(Boolean),
+        )
 
-      // Inline code
-      .replace(/`([^`]+)`/g, '<code class="bg-gray-700 px-2 py-1 rounded text-green-400 text-sm">$1</code>')
+      let tableHtml = '<div class="overflow-x-auto my-4"><table class="w-full border-collapse text-gray-200">'
 
-      // Lists (unordered)
-      .replace(/^- (.*$)/gm, '<li class="ml-4 mb-1 text-gray-200">• $1</li>')
+      // Table Header
+      tableHtml += '<thead><tr class="bg-gray-700">'
+      headers.forEach((header: string) => {
+        tableHtml += `<th class="border border-gray-600 px-4 py-2 text-left font-semibold">${header}</th>`
+      })
+      tableHtml += "</tr></thead>"
 
-      // Lists (ordered)
-      .replace(/^\d+\. (.*$)/gm, '<li class="ml-4 mb-1 text-gray-200 list-decimal">$1</li>')
-
-      // Line breaks
-      .replace(/\n\n/g, "<br><br>")
-      .replace(/\n/g, "<br>")
-
-      // Links
-      .replace(
-        /\[([^\]]+)\]$$([^)]+)$$/g,
-        '<a href="$2" class="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer">$1</a>',
-      )
+      // Table Body
+      tableHtml += "<tbody>"
+      rows.forEach((row: string[]) => {
+        tableHtml += '<tr class="even:bg-gray-800 odd:bg-gray-900">'
+        row.forEach((cell: string) => {
+          tableHtml += `<td class="border border-gray-700 px-4 py-2">${cell}</td>`
+        })
+        tableHtml += "</tr>"
+      })
+      tableHtml += "</tbody></table></div>"
+      return tableHtml
+    },
   )
+
+  // Handle paragraphs and remaining line breaks
+  // Split by two or more newlines to identify distinct paragraphs.
+  // Filter out empty strings that might result from splitting.
+  const paragraphs = processedText.split(/\n{2,}/).filter((p) => p.trim().length > 0)
+
+  // For each paragraph, replace single newlines with a space (soft break)
+  // Then wrap in <p> tags with a reduced bottom margin.
+  processedText = paragraphs
+    .map((paragraph) => {
+      // Replace single newlines within a paragraph with a space
+      const cleanedParagraph = paragraph.replace(/\n/g, " ").trim()
+      // Only wrap if there's actual content
+      return cleanedParagraph ? `<p class="mb-2">${cleanedParagraph}</p>` : ""
+    })
+    .join("")
+
+  // Process inline elements
+  processedText = processedText
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-100">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em class="italic text-gray-200">$1</em>')
+    .replace(/`([^`]+)`/g, '<code class="bg-gray-700 px-2 py-1 rounded text-green-400 text-sm">$1</code>')
+    .replace(
+      /\[([^\]]+)\]\$\$([^)]+)\$\$/g,
+      '<a href="$2" class="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer">$1</a>',
+    )
+
+  // Restore code blocks
+  codeBlockMap.forEach((originalCodeBlock, placeholder) => {
+    // Restore the original code block content, including its backticks
+    processedText = processedText.replace(
+      placeholder,
+      originalCodeBlock.replace(
+        /```([\s\S]*?)```/,
+        `<pre class="bg-gray-700 p-3 rounded-lg mt-2 mb-2 overflow-x-auto"><code class="text-green-400 text-sm">$1</code></pre>`,
+      ),
+    )
+  })
+
+  return processedText
 }
 
 export default function ChatWidget() {
@@ -270,7 +332,7 @@ I'm unable to connect to the backend service to process your message: "${current
 - Endpoints tried: http://127.0.0.1:8000/ask, http://localhost:8000/ask
 
 **Please ensure:**
-1. Backend server is running at http://127.0.0.1:8000 or http://localhost:8000
+1. Backend server is running at http://127.0.0.1:8000
 2. The /ask endpoint is available and responding
 3. CORS is properly configured on the backend
 4. No firewall is blocking the connection
@@ -403,7 +465,7 @@ Please try again once the backend service is available.`,
                 <p className="text-sm lg:text-base text-gray-400">HR Assistant</p>
                 <div className={`text-xs ${getConnectionStatusColor()} flex items-center space-x-1`}>
                   {getConnectionIcon()}
-                  <span>{getConnectionStatusText()}</span>
+                  <span>Status: {getConnectionStatusText()}</span>
                 </div>
               </div>
             </div>
@@ -437,6 +499,9 @@ Please try again once the backend service is available.`,
           <ScrollArea className="flex-1 p-6 bg-gray-900">
             {showWelcome && messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
+                <p className="text-yellow-400 text-sm lg:text-base mb-4 px-4 py-2 bg-gray-800 rounded-lg border border-yellow-500/50">
+                  Please ask questions in detail to get relevant answers.
+                </p>
                 <div className="w-20 h-20 lg:w-24 lg:h-24 bg-black rounded-full flex items-center justify-center mb-6 p-3">
                   <div className="w-full h-full relative">
                     <Image src="/qadri-logo.png" alt="Qadri Group" fill className="object-contain" />
