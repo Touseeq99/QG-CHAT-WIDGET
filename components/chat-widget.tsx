@@ -144,14 +144,14 @@ export default function ChatWidget() {
 
   const getApiEndpoints = () => {
     // Your specific backend endpoints
-    return ["http://127.0.0.1:8000/ask", "http://localhost:8000/ask"]
+    return ["http://127.0.0.1:8000/ask", "http://localhost:8000/ask", "http://192.168.2.66:8000/ask"]
   }
 
   const checkBackendConnection = async () => {
     setConnectionStatus("checking")
     setLastConnectionCheck(new Date())
 
-    const endpoints = ["http://127.0.0.1:8000", "http://localhost:8000"]
+    const endpoints = ["http://127.0.0.1:8000", "http://localhost:8000", "http://192.168.2.66:8000"]
     let connected = false
 
     for (const baseUrl of endpoints) {
@@ -321,10 +321,10 @@ I'm unable to connect to the backend service to process your message: "${current
 **Error Details:**
 - Response time: ${responseTime}ms
 - Error: ${error instanceof Error && error.name === "AbortError" ? "Request timed out after 60 seconds." : error instanceof Error ? error.message : "Unknown error"}
-- Endpoints tried: http://127.0.0.1:8000/ask, http://localhost:8000/ask
+- Endpoints tried: http://127.0.0.1:8000/ask, http://localhost:8000/ask, http://192.168.2.66:8000/ask
 
 **Please ensure:**
-1. Backend server is running at http://127.0.0.1:8000
+1. Backend server is running at http://127.0.0.1:8000 or http://192.168.2.66:8000
 2. The /ask endpoint is available and responding
 3. CORS is properly configured on the backend
 4. No firewall is blocking the connection
@@ -445,7 +445,7 @@ Please try again once the backend service is available.`,
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="bg-neutral-950 rounded-2xl shadow-2xl border border-neutral-800 w-80 sm:w-[400px] lg:w-[500px] xl:w-[600px] h-[450px] sm:h-[600px] lg:h-[700px] xl:h-[800px] flex flex-col animate-in slide-in-from-bottom-2 duration-300">
+        <div className="bg-neutral-950 rounded-2xl shadow-2xl border border-neutral-800 w-72 sm:w-[360px] lg:w-[450px] xl:w-[550px] h-[400px] sm:h-[550px] lg:h-[650px] xl:h-[750px] flex flex-col animate-in slide-in-from-bottom-2 duration-300">
           {/* Header */}
           <div className="bg-neutral-900 text-neutral-100 p-3 rounded-t-2xl flex items-center justify-between border-b border-neutral-800">
             <div className="flex items-center space-x-3">
