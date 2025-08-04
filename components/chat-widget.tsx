@@ -125,6 +125,22 @@ export default function ChatWidget() {
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "checking">("disconnected")
   const [lastConnectionCheck, setLastConnectionCheck] = useState<Date | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+
+  // Load session ID from localStorage on mount
+  useEffect(() => {
+    const savedSessionId = localStorage.getItem("qadri-chat-session-id")
+    if (savedSessionId) {
+      setSessionId(savedSessionId)
+    }
+  }, [])
+
+  // Save session ID to localStorage when it changes
+  useEffect(() => {
+    if (sessionId) {
+      localStorage.setItem("qadri-chat-session-id", sessionId)
+    }
+  }, [sessionId])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -248,6 +264,7 @@ export default function ChatWidget() {
             },
             body: JSON.stringify({
               question: currentInput,
+              session_id: sessionId || "",
               timestamp: new Date().toISOString(),
             }),
             signal: controller.signal,
@@ -281,6 +298,11 @@ export default function ChatWidget() {
       const endTime = performance.now()
       const responseTime = Math.round(endTime - startTime)
       const data = await response.json()
+
+      // Store session ID from first response
+      if (!sessionId && data.session_id) {
+        setSessionId(data.session_id)
+      }
 
       // Remove loading message and add actual response
       setMessages((prev) => {
@@ -455,10 +477,6 @@ Please try again once the backend service is available.`,
               <div>
                 <h3 className="font-bold text-sm lg:text-base">Qadri Group</h3>
                 <p className="text-xs text-neutral-400">HR Assistant</p>
-                <div className={`text-xs ${getConnectionStatusColor()} flex items-center space-x-1`}>
-                  {getConnectionIcon()}
-                  <span>Status: {getConnectionStatusText()}</span>
-                </div>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -491,9 +509,6 @@ Please try again once the backend service is available.`,
           <ScrollArea className="flex-1 p-4 bg-neutral-900">
             {showWelcome && messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
-                <p className="text-xs lg:text-sm mb-3 px-3 py-1.5 bg-neutral-800 rounded-lg border border-yellow-500/50 text-yellow-400">
-                  Please ask questions in detail to get relevant answers.
-                </p>
                 <div className="w-16 h-16 lg:w-20 lg:h-20 bg-neutral-900 rounded-full flex items-center justify-center mb-4 p-2">
                   <div className="w-full h-full relative">
                     <Image src="/qadri-logo.png" alt="Qadri Group" fill className="object-contain" />
@@ -584,22 +599,22 @@ Please try again once the backend service is available.`,
 
           {/* Input */}
           <div className="p-4 border-t border-neutral-800 bg-neutral-900">
-            <div className="flex space-x-3 items-end">
+            <div className="relative">
               <Textarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type your message..."
                 disabled={isLoading}
-                className="flex-1 text-sm lg:text-base py-2.5 px-4 rounded-xl border-2 border-neutral-700 bg-neutral-800 text-neutral-100 placeholder-neutral-400 focus:border-yellow-500 focus:ring-0 h-24" // Fixed height, no resize, no overflow-y-auto
+                className="flex-1 text-sm lg:text-base py-2.5 px-4 pr-16 rounded-xl border-2 border-neutral-700 bg-neutral-800 text-neutral-100 placeholder-neutral-400 focus:border-yellow-500 focus:ring-0 h-24 resize-none"
               />
               <Button
                 onClick={sendMessage}
                 disabled={!inputValue.trim() || isLoading}
                 size="icon"
-                className="bg-neutral-700 hover:bg-neutral-600 text-neutral-100 hover:scale-105 h-16 w-16 lg:h-18 lg:w-18 rounded-full transition-all duration-200 flex-shrink-0" // Gray button
+                className="absolute right-2 bottom-2 bg-neutral-700 hover:bg-neutral-600 text-neutral-100 hover:scale-105 h-12 w-12 rounded-full transition-all duration-200"
               >
-                <Send className="h-6 w-6 lg:h-7 lg:w-7 text-neutral-100" />
+                <Send className="h-5 w-5 text-neutral-100" />
               </Button>
             </div>
           </div>
