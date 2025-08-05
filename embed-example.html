@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Your Website with Chat Widget</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: Arial, sans-serif;
+        }
+        
+        /* Your existing website styles */
+        .main-content {
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        /* Chat widget styles */
+        #qadri-chat-widget {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            pointer-events: none;
+            z-index: 9999;
+            background: transparent;
+        }
+
+        /* Only allow interaction in bottom-right corner initially */
+        #qadri-chat-widget.button-only {
+            clip-path: circle(80px at calc(100% - 80px) calc(100% - 80px));
+            pointer-events: all;
+        }
+
+        /* Allow full interaction when chat is open */
+        #qadri-chat-widget.chat-open {
+            clip-path: none;
+            pointer-events: all;
+        }
+    </style>
+</head>
+<body>
+    <!-- Your existing website content -->
+    <div class="main-content">
+        <h1>Welcome to Your Website</h1>
+        <p>This is your existing website content. The chat widget will appear in the bottom-right corner.</p>
+        
+        <h2>About Us</h2>
+        <p>Your regular content goes here...</p>
+        
+        <h2>Services</h2>
+        <p>More content...</p>
+        
+        <!-- Add more content to test scrolling -->
+        <div style="height: 800px; background: linear-gradient(to bottom, #f9f9f9, #e9e9e9); padding: 20px; margin: 20px 0;">
+            <p>Scroll down to test that the chat widget stays fixed in position...</p>
+        </div>
+    </div>
+
+    <!-- Chat Widget iframe -->
+    <iframe 
+        src="http://192.168.2.65:3000" 
+        id="qadri-chat-widget"
+        class="button-only"
+        allow="clipboard-read; clipboard-write"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups">
+    </iframe>
+
+    <script>
+        const iframe = document.getElementById('qadri-chat-widget');
+        
+        // Listen for messages from the chat widget
+        window.addEventListener('message', function(event) {
+            // Security check - only accept messages from your chat widget
+            if (event.origin !== 'http://192.168.2.65:3000') return;
+            
+            if (event.data.type === 'CHAT_WIDGET_STATE') {
+                if (event.data.isOpen) {
+                    // Chat is open - allow full interaction
+                    iframe.className = 'chat-open';
+                } else {
+                    // Chat is closed - only allow button interaction
+                    iframe.className = 'button-only';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
